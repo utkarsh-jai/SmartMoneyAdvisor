@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Spending Advisor</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-admob.js"></script>
+    <style>
+        :root {
+            --primary-color: #4a6fa5;
+            --secondary-color: #166088;
+            --accent-color: #4fc3f7;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--secondary-color);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.2);
+        }
+        
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .result-card {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .result-title {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .result-content {
+            white-space: pre-wrap;
+            line-height: 1.7;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .ad-container {
+            width: 100%;
+            background-color: #f1f1f1;
+            text-align: center;
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 5px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .budget-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .budget-item {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: var(--light-color);
+            margin: 5px;
+        }
+        
+        .budget-item h3 {
+            font-size: 1rem;
+            color: var(--secondary-color);
+            margin-bottom: 5px;
+        }
+        
+        .budget-item p {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .savings {
+            background-color: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .expenses {
+            background-color: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .disposable {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid var(--warning-color);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            header {
+                padding: 15px 0;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .card {
+                padding: 20px;
+            }
+            
+            .budget-item {
+                min-width: calc(50% - 10px);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            .subtitle {
+                font-size: 0.9rem;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            input, select, textarea, button {
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            .budget-item {
+                min-width: 100%;
+            }
+            
+            .result-title {
+                font-size: 1.3rem;
+            }
+            
+            .result-content {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Smart Spending Advisor</h1>
+            <p class="subtitle">Get AI-powered financial advice for your money</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- AdMob Banner Ad -->
+        <div class="ad-container">
+            <div id="banner-ad">
+                <p>Loading ad...</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Your Financial Details</h2>
+            <form id="financialForm">
+                <div class="form-group">
+                    <label for="income">Monthly Income ($)</label>
+                    <input type="number" id="income" placeholder="Enter your monthly income" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="expenses">Monthly Expenses ($)</label>
+                    <input type="number" id="expenses" placeholder="Enter your monthly expenses" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="savings">Current Savings ($)</label>
+                    <input type="number" id="savings" placeholder="Enter your current savings" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="goals">Financial Goals</label>
+                    <select id="goals" required>
+                        <option value="" disabled selected>Select your primary goal</option>
+                        <option value="Build emergency fund">Build emergency fund</option>
+                        <option value="Save for a house">Save for a house</option>
+                        <option value="Pay off debt">Pay off debt</option>
+                        <option value="Retirement planning">Retirement planning</option>
+                        <option value="Invest for growth">Invest for growth</option>
+                        <option value="Save for vacation">Save for vacation</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="additionalInfo">Additional Information (Optional)</label>
+                    <textarea id="additionalInfo" rows="3" placeholder="Any specific concerns or details about your financial situation..."></textarea>
+                </div>
+                
+                <button type="submit" id="submitBtn">Get Spending Advice</button>
+            </form>
+        </div>
+        
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p>Generating personalized financial advice...</p>
+        </div>
+        
+        <div class="result-container" id="resultContainer">
+            <div class="card budget-summary">
+                <div class="budget-item savings">
+                    <h3>Monthly Savings</h3>
+                    <p id="monthlySavings">$0</p>
+                </div>
+                <div class="budget-item expenses">
+                    <h3>Monthly Expenses</h3>
+                    <p id="monthlyExpenses">$0</p>
+                </div>
+                <div class="budget-item disposable">
+                    <h3>Disposable Income</h3>
+                    <p id="disposableIncome">$0</p>
+                </div>
+            </div>
+            
+            <div class="result-card">
+                <h3 class="result-title">Your Personalized Spending Advice</h3>
+                <div class="result-content" id="adviceResult"></div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>Smart Spending Advisor &copy; 2023 | This tool provides suggestions only, not financial advice</p>
+        </div>
+    </footer>
+    
+    <script>
+        // Firebase and AdMob configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDEXAMPLEEXAMPLEEXAMPLEEXAMPLE",
+            authDomain: "yourapp.firebaseapp.com",
+            projectId: "yourapp",
+            storageBucket: "yourapp.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abc123def456",
+            measurementId: "G-EXAMPLE"
+        };
+        
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        // Initialize AdMob
+        function initializeAdMob() {
+            // Check if admob is available
+            if (typeof admob === 'undefined') {
+                console.error('AdMob SDK not loaded');
+                document.getElementById('banner-ad').innerHTML = '<p>AdMob not supported in this environment</p>';
+                return;
+            }
+            
+            // Set AdMob configuration
+            admob.setDevMode(false); // Set to true for testing, false for production
+            
+            // Initialize
+            admob.initialize().then(() => {
+                console.log('AdMob initialized successfully');
+                
+                // Banner ad config
+                const bannerConfig = {
+                    id: 'ca-app-pub-7471557737906065/8152928939', // Your actual ad unit ID
+                    size: 'SMART_BANNER'
+                };
+                
+                // Show banner ad
+                admob.banner.show(bannerConfig).then(() => {
+                    console.log('Banner ad displayed');
+                    document.getElementById('banner-ad').innerHTML = '';
+                }).catch(error => {
+                    console.error('Failed to show banner ad:', error);
+                    document.getElementById('banner-ad').innerHTML = '<p>Ad failed to load</p>';
+                });
+            }).catch(error => {
+                console.error('Failed to initialize AdMob:', error);
+                document.getElementById('banner-ad').innerHTML = '<p>AdMob initialization failed</p>';
+            });
+        }
+        
+        // Initialize AdMob when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeAdMob);
+        
+        // Gemini API Key
+        const GEMINI_API_KEY = 'AIzaSyA2XVDONJpnYH9xbQKP2AOLI5sm7Cr1pcI';
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+        
+        // DOM elements
+        const financialForm = document.getElementById('financialForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultContainer = document.getElementById('resultContainer');
+        const adviceResult = document.getElementById('adviceResult');
+        const monthlySavings = document.getElementById('monthlySavings');
+        const monthlyExpenses = document.getElementById('monthlyExpenses');
+        const disposableIncome = document.getElementById('disposableIncome');
+        
+        // Form submission handler
+        financialForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const income = parseFloat(document.getElementById('income').value);
+            const expenses = parseFloat(document.getElementById('expenses').value);
+            const savings = parseFloat(document.getElementById('savings').value);
+            const goals = document.getElementById('goals').value;
+            const additionalInfo = document.getElementById('additionalInfo').value;
+            
+            // Validate inputs
+            if (isNaN(income) || isNaN(expenses) || isNaN(savings)) {
+                alert('Please enter valid numbers for all fields');
+                return;
+            }
+            
+            if (income <= 0) {
+                alert('Income must be greater than 0');
+                return;
+            }
+            
+            // Calculate basic financial metrics
+            const disposable = income - expenses;
+            
+            // Update summary cards
+            monthlySavings.textContent = `$${disposable.toFixed(2)}`;
+            monthlyExpenses.textContent = `$${expenses.toFixed(2)}`;
+            disposableIncome.textContent = `$${disposable.toFixed(2)}`;
+            
+            // Show loading indicator
+            submitBtn.disabled = true;
+            loadingIndicator.style.display = 'block';
+            resultContainer.style.display = 'none';
+            
+            try {
+                // Prepare prompt for Gemini
+                const prompt = `Act as a financial advisor. The user has provided these details:
+                - Monthly Income: $${income}
+                - Monthly Expenses: $${expenses}
+                - Current Savings: $${savings}
+                - Primary Financial Goal: ${goals}
+                - Additional Information: ${additionalInfo || 'None provided'}
+                
+                Based on this information, please provide:
+                1. A brief analysis of their current financial health
+                2. Specific spending recommendations to help them achieve their goal
+                3. Suggestions for optimizing their budget
+                4. Any potential risks or things to watch out for
+                
+                Keep the advice practical, actionable, and concise (about 300 words). Use bullet points for readability. Format the response with clear headings and spacing for better readability.`;
+                
+                // Call Gemini API
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Extract and display the response
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                    const textResponse = data.candidates[0].content.parts[0].text;
+                    adviceResult.innerHTML = textResponse.replace(/\n/g, '<br>');
+                } else {
+                    throw new Error('Unexpected API response format');
+                }
+                
+                // Show results
+                resultContainer.style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                adviceResult.innerHTML = `
+                    <p>Sorry, we couldn't generate advice at this time.</p>
+                    <p>Error: ${error.message}</p>
+                    <p>Please try again later or check your internet connection.</p>
+                `;
+                resultContainer.style.display = 'block';
+            } finally {
+                loadingIndicator.style.display = 'none';
+                submitBtn.disabled = false;
+                
+                // Scroll to results
+                resultContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+        
+        // Input validation
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value < 0) {
+                    this.value = 0;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
